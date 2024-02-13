@@ -1,7 +1,10 @@
 package src;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.Collections;
 
 public class Task {
     public record File(
@@ -16,21 +19,94 @@ public class Task {
      * Task 1
      */
     public static List<String> leafFiles(List<File> files) {
-        return new ArrayList<>();
+        Map<Integer, Integer> fileTally = new HashMap<Integer, Integer>();
+
+        // Tally up the amount of times that a file is referenced as a parent file
+        for (File file : files) {
+            Integer count = fileTally.getOrDefault(file.id, 0);
+            Integer parentCount = fileTally.getOrDefault(file.parent, 0);
+            fileTally.put(file.id, count);
+            fileTally.put(file.parent, parentCount + 1);
+        }
+
+        // Extract files that have a tally of 0 which are leaf files
+        List<Integer> leafFileIds = fileTally.entrySet().stream()
+            .filter(file -> file.getValue().equals(0))
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());
+
+        // Map leaf file ids to names
+        List<String> leafFiles = leafFileIds.stream()
+            .map(id -> getFile(id, files).name)
+            .sorted()
+            .collect(Collectors.toList());
+
+        return leafFiles;
     }
 
     /**
      * Task 2
      */
     public static List<String> kLargestCategories(List<File> files, int k) {
-        return new ArrayList<>();
+        // Count the number of times a category appears
+        Map<String, Integer> categories = new HashMap<String, Integer>();
+        for (File file : files) {
+            for (String category : file.categories) {
+                Integer count = categories.getOrDefault(category, 0);
+                categories.put(category, count + 1);
+            }
+        }
+
+        // Sort the list of categories from highest -> lowest
+        List<String> largestCategories = categories.entrySet().stream()
+            .sorted(Collections.reverseOrder(Map.Entry.comparingByValue()))
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());
+
+        // Take the first k categories and sort them alphabetically
+        List<String> kLargestCategories =  largestCategories.stream().limit(k).sorted().collect(Collectors.toList());
+
+        return kLargestCategories;
     }
 
     /**
      * Task 3
      */
     public static int largestFileSize(List<File> files) {
-        return 0;
+        Map<Integer, Integer> parentFiles = new HashMap<Integer, Integer>();
+        // Determine the parent file for each file and add to the total file size of the parent
+        for (File file : files) {
+            Integer parentId = getParentFile(file, files);
+            Integer fileSize = parentFiles.getOrDefault(parentId, 0);
+            parentFiles.put(getParentFile(file, files), fileSize + file.size);
+        }
+
+        // Get the file with the largest file size
+        return Collections.max(parentFiles.entrySet(), Map.Entry.comparingByValue()).getValue();
+    }
+
+    /**
+     * Helper functions
+     */
+
+    // Get a file by its file id
+    private static File getFile(Integer id, List<File> files) {
+        return files.stream()
+        .filter(file -> id.equals(file.id))
+        .findAny()
+        .orElse(null);
+    }
+
+    // Get a parent file from a child file
+    private static Integer getParentFile(File file, List<File> files) {
+        if (file.parent == -1) {
+            return file.id;
+        }
+
+        Integer parentId = file.parent;
+        File parent = getFile(parentId, files);
+                    
+        return getParentFile(parent, files);
     }
 
     public static void main(String[] args) {
